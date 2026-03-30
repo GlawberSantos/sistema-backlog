@@ -1,0 +1,30 @@
+{
+  "name": "redex-ativacao-backend",
+  "version": "2.0.0",
+  "description": "Backend - Sistema de Gestão de Backlog e Ativação de Rede de Telecomunicações",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "init-db": "node scripts/initDatabase.js"
+  },
+  "keywords": [
+    "telecomunicacoes",
+    "backlog",
+    "ativacao",
+    "sqlite"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.20.0",
+    "xlsx": "^0.18.5"
+  }
+}
