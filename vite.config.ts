@@ -32,15 +32,6 @@ export default defineConfig({
   // IMPORTANTE PARA GITHUB PAGES
   base: '/sistema-backlog/',
 
-  build: {
-    rollupOptions: {
-      output: {
-        chunkFileNames: 'assets/[name]-[hash].js',
-        entryFileNames: 'assets/[name]-[hash].js',
-      }
-    }
-  },
-
   server: {
     host: true,
     port: 5173,
