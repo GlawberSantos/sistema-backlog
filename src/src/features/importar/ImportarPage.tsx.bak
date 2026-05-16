@@ -1,0 +1,242 @@
+// src/features/importar/ImportarPage.tsx
+import { useState } from 'react';
+import * as XLSX from 'xlsx';
+import { useAppStore } from '../../store/useAppStore';
+
+export default function ImportarPage() {
+  const { importData } = useAppStore();
+  const [preview, setPreview] = useState<any[]>([]);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+
+  const handleFile = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const raw = new Uint8Array(e.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(raw, { type: 'array', cellDates: true });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+
+      if (json.length > 1) {
+        const headerRow = json[0] as string[];
+        const dataRows = json.slice(1).map((row) => {
+          const obj: Record<string, unknown> = {};
+          headerRow.forEach((header, i) => {
+            obj[header] = row[i];
+          });
+          return obj;
+        });
+
+        setHeaders(headerRow);
+        setImportRows(dataRows);
+        setPreview(dataRows.slice(0, 20));
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const resetFile = () => {
+    setPreview([]);
+    setImportRows([]);
+    setHeaders([]);
+  };
+
+  const confirmImport = () => {
+    if (importRows.length === 0) return alert('Nenhum arquivo carregado');
+
+    const today = new Date();
+    const prazoBase = new Date(today);
+    prazoBase.setDate(today.getDate() + 30);
+
+    const converted = importRows.map((row, index) => {
+      const servico = String(row.Servico || row.Produto || '').toLowerCase();
+      let tipo: 'Construção' | 'Ativação' | 'Vistoria' = 'Construção';
+      if (servico.includes('sip') || servico.includes('voz')) tipo = 'Ativação';
+      else if (servico.includes('altera') || servico.includes('mudança')) tipo = 'Vistoria';
+
+      const classAtual = String(row['Classificacao_Resumo_Atual'] || '').toLowerCase();
+      let status = 'Disponível';
+      if (classAtual.includes('faturado') || classAtual.includes('conclu')) status = 'Concluído';
+      else if (classAtual.includes('cancel')) status = 'Cancelado';
+      else if (classAtual.includes('tecnica') || classAtual.includes('execu') || classAtual.includes('ativação')) status = 'Em Andamento';
+      else if (classAtual.includes('pend')) status = 'Pendente';
+
+      const dataAbertura = row['Data_Entrada']
+        ? new Date(row['Data_Entrada'] as string).toISOString().split('T')[0]
+        : today.toISOString().split('T')[0];
+      const prazo = row['DATA_PRAZO']
+        ? new Date(row['DATA_PRAZO'] as string).toISOString().split('T')[0]
+        : prazoBase.toISOString().split('T')[0];
+
+      // helper: valor de data seguro
+      const toDate = (v: unknown) => {
+        if (!v) return '';
+        try { return new Date(v as string).toISOString().split('T')[0]; } catch { return String(v); }
+      };
+
+      return {
+        // ── Identificação ────────────────────────────────────────────────
+        ID: String(row.Pedido || row.ID_Vantive || row.OS_SCD || `IMP${Date.now()}-${index}`),
+        Pedido:            String(row.Pedido || ''),
+        DraftEncontrado:   String(row.DraftEncontrado || ''),
+        Bucle_Contratada:  String(row.Bucle_Contratada || ''),
+        OS_SCD:            String(row.OS_SCD || row.ID_Vantive || ''),
+        Tecnologia_Report: String(row.Tecnologia_Report || ''),
+        Capacitacao_ERB:   String(row.Capacitacao_ERB || ''),
+
+        // ── Cliente ──────────────────────────────────────────────────────
+        Cliente:  String(row.Cliente || 'Cliente Importado'),
+        Endereco: String(row.Endereco_Completo || row.Endereco || ''),
+        Numero:   String(row.Numero || row.Num || ''),
+        CEP:      String(row.CEP || ''),
+        Cidade:   String(row.Cidade || ''),
+        UF:       String(row.UF || 'PE'),
+        CNPJ:     String(row.CNPJ || ''),
+        Produto:  String(row.Produto || ''),
+        Servico:  String(row.Servico || row.Servico_Produto || ''),
+        Carteira: String(row.Carteira || ''),
+
+        // ── Datas ────────────────────────────────────────────────────────
+        'Data de Abertura':    dataAbertura,
+        Prazo:                 prazo,
+        DataTecnica:           toDate(row.DataTecnica),
+        Data_RFS:              toDate(row.Data_RFS),
+        DataRede:              toDate(row.DataRede),
+        Data_Planejada_Status: toDate(row.Data_Planejada_Status),
+        Dias_CarteiraAtual:    String(row.Dias_CarteiraAtual ?? ''),
+        PRAZO_BSC:             toDate(row.PRAZO_BSC),
+
+        // ── Classificação ────────────────────────────────────────────────
+        Status:      status,
+        Responsavel: String(row.Parceiro || row.ResponsavelPE || ''),
+        Tipo:        tipo,
+        Classificacao_rede:       String(row.Classificacao_rede || row['GD - Classificacao_rede'] || ''),
+        'GD - Classificacao_rede': String(row['GD - Classificacao_rede'] || row.Classificacao_rede || ''),
+        ConfigStatus:             String(row.ConfigStatus || ''),
+        Ofensor_Tecnico_Vivo_2:   String(row.Ofensor_Tecnico_Vivo_2 || ''),
+
+        // ── Gestão / BSC ─────────────────────────────────────────────────
+        GRUPO_BSC:   String(row.GRUPO_BSC || ''),
+        Efika_GIS:   String(row.Efika_GIS || ''),
+        TM_Regional: String(row.TM_Regional || ''),
+        PON:         String(row.OS_SCD || row.ID_Vantive || ''),
+      };
+    });
+
+    importData(converted);
+    alert(`${converted.length} registros importados com sucesso!`);
+    resetFile();
+  };
+
+  // Verifica quais colunas críticas estão presentes na planilha
+  const colunasAuditoria = headers.length > 0 ? [
+    { col: 'Pedido',                label: 'Pedido',                ok: headers.includes('Pedido') },
+    { col: 'DraftEncontrado',       label: 'DraftEncontrado',       ok: headers.includes('DraftEncontrado') },
+    { col: 'Bucle_Contratada',      label: 'Bucle_Contratada',      ok: headers.includes('Bucle_Contratada') },
+    { col: 'Tecnologia_Report',     label: 'Tecnologia_Report',     ok: headers.includes('Tecnologia_Report') },
+    { col: 'OS_SCD',                label: 'OS_SCD',                ok: headers.includes('OS_SCD') },
+    { col: 'Capacitacao_ERB',       label: 'Capacitacao_ERB',       ok: headers.includes('Capacitacao_ERB') },
+    { col: 'Produto',               label: 'Produto',               ok: headers.includes('Produto') },
+    { col: 'Carteira',              label: 'Carteira',              ok: headers.includes('Carteira') },
+    { col: 'Dias_CarteiraAtual',    label: 'Dias_CarteiraAtual',    ok: headers.includes('Dias_CarteiraAtual') },
+    { col: 'DataTecnica',           label: 'DataTecnica',           ok: headers.includes('DataTecnica') },
+    { col: 'Data_RFS',              label: 'Data_RFS',              ok: headers.includes('Data_RFS') },
+    { col: 'DataRede',              label: 'DataRede',              ok: headers.includes('DataRede') },
+    { col: 'Ofensor_Tecnico_Vivo_2',label: 'Ofensor_Tecnico_Vivo_2',ok: headers.includes('Ofensor_Tecnico_Vivo_2') },
+    { col: 'Data_Planejada_Status', label: 'Data_Planejada_Status', ok: headers.includes('Data_Planejada_Status') },
+    { col: 'Classificacao_rede',    label: 'Classificacao_rede',    ok: headers.includes('Classificacao_rede') },
+    { col: 'ConfigStatus',          label: 'ConfigStatus',          ok: headers.includes('ConfigStatus') },
+    { col: 'GRUPO_BSC',             label: 'GRUPO_BSC',             ok: headers.includes('GRUPO_BSC') },
+    { col: 'PRAZO_BSC',             label: 'PRAZO_BSC',             ok: headers.includes('PRAZO_BSC') },
+    { col: 'Efika_GIS',             label: 'Efika_GIS',             ok: headers.includes('Efika_GIS') },
+    { col: 'TM_Regional',           label: 'TM_Regional',           ok: headers.includes('TM_Regional') },
+  ] : [];
+  const colunasFaltando = colunasAuditoria.filter(c => !c.ok);
+
+  return (
+    <div className="panel" style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div className="panel-header">
+        <span className="panel-title">Importar Planilha (.xlsx / .xls)</span>
+      </div>
+      <div className="panel-body">
+        <input type="file" id="file-input-import" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={(e) => e.target.files && handleFile(e.target.files[0])} />
+
+        {preview.length === 0 ? (
+          <div
+            className="drop-zone"
+            onClick={() => document.getElementById('file-input-import')?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.add('over');
+            }}
+            onDragLeave={(e) => e.currentTarget.classList.remove('over')}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.currentTarget.classList.remove('over');
+              if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+            }}
+          >
+            <svg style={{ width: 40, height: 40, margin: '0 auto 12px', color: 'var(--text-muted)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3 3m0 0 3-3m-3 3V2.25" />
+            </svg>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>Arraste e solte o arquivo aqui</p>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>ou clique para selecionar — .xlsx, .xls</p>
+          </div>
+        ) : (
+          <div style={{ marginTop: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>Pré-visualização (primeiras 20 linhas)</h3>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={resetFile}>
+                ↩ Trocar arquivo
+              </button>
+            </div>
+            <div style={{ overflowX: 'auto', maxHeight: 300, border: '1px solid var(--border)', borderRadius: 8 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    {headers.map((h, i) => (
+                      <th key={i}>{h || ''}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {preview.map((row, i) => (
+                    <tr key={i}>
+                      {headers.map((h, j) => (
+                        <td key={j}>{row[h] instanceof Date ? (row[h] as Date).toLocaleDateString('pt-BR') : String(row[h] ?? '')}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Auditoria de colunas */}
+            {colunasFaltando.length > 0 && (
+              <div style={{ marginTop: 14, background: '#f5882a10', border: '1px solid #f5882a40', borderRadius: 10, padding: '14px 16px' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#f5882a', marginBottom: 10 }}>
+                  ⚠️ {colunasFaltando.length} coluna(s) não encontrada(s) — esses campos ficarão vazios no formulário do técnico:
+                </div>
+                {colunasFaltando.map(c => (
+                  <div key={c.col} style={{ fontSize: 11, color: '#8a9bbf', marginBottom: 4, display: 'flex', gap: 8 }}>
+                    <span style={{ color: '#e85555', fontWeight: 700 }}>✗</span>
+                    <span><strong style={{ color: '#e8edf5' }}>{c.label}</strong></span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {colunasFaltando.length === 0 && colunasAuditoria.length > 0 && (
+              <div style={{ marginTop: 14, background: '#0eb88a10', border: '1px solid #0eb88a40', borderRadius: 10, padding: '10px 16px', fontSize: 12, color: '#0eb88a', fontWeight: 600 }}>
+                ✓ Todas as colunas críticas encontradas na planilha.
+              </div>
+            )}
+            <button type="button" className="btn btn-primary" style={{ marginTop: 12, width: '100%', justifyContent: 'center' }} onClick={confirmImport}>
+              ✓ Confirmar Importação
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
