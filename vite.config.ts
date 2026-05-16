@@ -3,11 +3,14 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+
+  // IMPORTANTE PARA GITHUB PAGES
+  base: '/sistema-backlog/',
+
   server: {
-    host: true,        // expõe para celular via IP da rede
+    host: true,
     port: 5173,
     proxy: {
-      // redireciona /api/* → json-server na porta 3001
       '/api': {
         target: 'http://localhost:3001',
         rewrite: (path) => path.replace(/^\/api/, ''),
