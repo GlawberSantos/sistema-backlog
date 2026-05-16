@@ -2,7 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [
     react(),
@@ -15,7 +18,7 @@ export default defineConfig({
         const distPath = path.resolve(__dirname, 'dist', '.nojekyll')
         const configYmlPath = path.resolve(__dirname, '_config.yml')
         const distConfigPath = path.resolve(__dirname, 'dist', '_config.yml')
-        
+
         if (fs.existsSync(nojekyllPath)) {
           fs.copyFileSync(nojekyllPath, distPath)
         }
