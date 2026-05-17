@@ -484,10 +484,12 @@ export default function TecnicoView() {
   const [sites, setSites] = useState<SiteKML[]>([]);
 
   useEffect(() => {
-    fetch('/kml/sites.kml')
+    // Usar import.meta.env.BASE_URL para garantir que o caminho funcione após o deploy no GitHub Pages
+    fetch(`${import.meta.env.BASE_URL}kml/sites.kml`)
       .then(r => (r.ok ? r.text() : Promise.reject()))
       .then(text => setSites(parseKML(text)))
-      .catch(() => {});
+      // Adicionar um log de erro para facilitar a depuração
+      .catch((err) => { console.error('Falha ao carregar ou processar o arquivo KML:', err); });
   }, []);
 
   if (!currentUser) return null;

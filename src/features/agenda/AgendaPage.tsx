@@ -165,7 +165,7 @@ export default function AgendaPage() {
     eventsByDay[day].push(ev);
   });
 
-  const calendarEvents = Object.entries(eventsByDay).flatMap(([day, evs]) => {
+  const calendarEvents = Object.entries(eventsByDay).flatMap(([day, evs]): any[] => {
     if (evs.length === 1) {
       const ev = evs[0];
       return [{

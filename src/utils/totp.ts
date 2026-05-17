@@ -28,12 +28,12 @@ function base32Decode(input: string): Uint8Array {
 // ── HMAC-SHA1 (Web Crypto API) ────────────────────────────────────────────────
 async function hmacSha1(keyBytes: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
-    'raw', keyBytes,
+    'raw', keyBytes as any,
     { name: 'HMAC', hash: 'SHA-1' },
     false,
     ['sign']
   );
-  const sig = await crypto.subtle.sign('HMAC', key, data);
+  const sig = await crypto.subtle.sign('HMAC', key, data as any);
   return new Uint8Array(sig);
 }
 
