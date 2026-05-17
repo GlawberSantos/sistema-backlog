@@ -60,21 +60,24 @@ function PendingCard({
   onAgendar,
   onUpdateItem,
 }: {
-  item: { ID: string; Pedido?: string; Cliente: string; Tipo: string; Cidade?: string; UF?: string; Bucle_Contratada?: string };
+  item: { ID: string; Pedido?: string; Cliente: string; Tipo: 'Construção' | 'Ativação' | 'Vistoria'; Cidade?: string; UF?: string; Bucle_Contratada?: string };
   tecnicos: { id: number; nome: string }[];
-  onAgendar: (item: { ID: string; Pedido?: string; Cliente: string; Tipo: string }, tecnico: string, date: string) => void;
-  onUpdateItem: (id: string, updates: { Bucle_Contratada?: string; Tipo?: string }) => void;
+  onAgendar: (item: { ID: string; Pedido?: string; Cliente: string; Tipo: 'Construção' | 'Ativação' | 'Vistoria' }, tecnico: string, date: string) => void;
+  onUpdateItem: (id: string, updates: { Bucle_Contratada?: string; Tipo?: 'Construção' | 'Ativação' | 'Vistoria' }) => void;
 }) {
   const [tecnico, setTecnico] = useState('');
   const [date, setDate] = useState('');
   const [empresa, setEmpresa] = useState(item.Bucle_Contratada || '');
-  const [tipo, setTipo] = useState(item.Tipo || '');
+  const [tipo, setTipo] = useState<'Construção' | 'Ativação' | 'Vistoria' | ''>(item.Tipo || '');
 
   const handleSaveChanges = () => {
-    onUpdateItem(item.ID, {
+    const updates: { Bucle_Contratada?: string; Tipo?: 'Construção' | 'Ativação' | 'Vistoria' } = {
       Bucle_Contratada: empresa,
-      Tipo: tipo,
-    });
+    };
+    if (tipo) {
+      updates.Tipo = tipo as 'Construção' | 'Ativação' | 'Vistoria';
+    }
+    onUpdateItem(item.ID, updates);
   };
 
   return (
@@ -105,14 +108,14 @@ function PendingCard({
           className="form-input form-select" 
           style={{ fontSize: 11, flex: 1 }} 
           value={tipo} 
-          onChange={(e) => setTipo(e.target.value)}
+          onChange={(e) => setTipo(e.target.value as 'Construção' | 'Ativação' | 'Vistoria' | '')}
           title="Editar tipo"
         >
           <option value="">🔧 Tipo</option>
-          {['Ativação', 'Manutenção', 'Construção'].map((t) => <option key={t} value={t}>{t}</option>)}
+          {['Construção', 'Ativação', 'Vistoria'].map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
 
-        {(empresa !== (item.Bucle_Contratada || '') || tipo !== item.Tipo) && (
+        {(empresa !== (item.Bucle_Contratada || '') || (tipo && tipo !== item.Tipo)) && (
           <button 
             type="button" 
             className="btn btn-primary btn-sm" 
@@ -128,7 +131,7 @@ function PendingCard({
           {tecnicos.map((t) => <option key={t.id} value={t.nome}>{t.nome}</option>)}
         </select>
         <input type="date" className="form-input" style={{ fontSize: 11 }} value={date} onChange={(e) => setDate(e.target.value)} />
-        <button type="button" className="btn btn-primary btn-sm" onClick={() => onAgendar({ ...item, Tipo: tipo }, tecnico, date)}>Agendar</button>
+        <button type="button" className="btn btn-primary btn-sm" onClick={() => onAgendar({ ...item, Tipo: (tipo as 'Construção' | 'Ativação' | 'Vistoria') || item.Tipo }, tecnico, date)}>Agendar</button>
       </div>
     </div>
   );
