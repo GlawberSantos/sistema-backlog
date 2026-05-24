@@ -1,6 +1,7 @@
 // src/App.tsx
 import { BrowserRouter as Router } from 'react-router-dom';
 import { useEffect } from 'react';
+import { ThemeProvider } from './components/ThemeProvider';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import AppRoutes from './routes/AppRoutes';
@@ -12,7 +13,16 @@ import { useState } from 'react';
 function App() {
   const { currentUser, loadAll } = useAppStore();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [ready, setReady] = useState(false);
+
+  const toggleSidebar = () => {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      setSidebarOpen((o) => !o);
+    } else {
+      setSidebarCollapsed((c) => !c);
+    }
+  };
 
   // Carrega dados do localStorage ao iniciar (síncrono na prática)
   useEffect(() => {
@@ -38,17 +48,23 @@ function App() {
   if (currentUser.nivel === 'Técnico') return <TecnicoView />;
 
   return (
-    <Router>
-      <div className="bg-[#0a0f1a] text-[#c8d3e6]" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
-        <Sidebar collapsed={sidebarCollapsed} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-          <Topbar onToggleSidebar={() => setSidebarCollapsed(c => !c)} />
-          <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-            <AppRoutes />
+    <ThemeProvider>
+      <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
+        <div className="bg-[#0a0f1a] text-[#c8d3e6]" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+          <Sidebar
+            open={sidebarOpen}
+            collapsed={sidebarCollapsed}
+            onClose={() => setSidebarOpen(false)}
+          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+            <Topbar onToggleSidebar={toggleSidebar} />
+            <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+              <AppRoutes />
+            </div>
           </div>
         </div>
-      </div>
-    </Router>
+      </Router>
+    </ThemeProvider>
   );
 }
 

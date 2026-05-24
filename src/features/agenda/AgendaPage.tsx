@@ -302,15 +302,15 @@ export default function AgendaPage() {
                 height="100%"
                 headerToolbar={{ left: 'prev,next today', center: 'title', right: '' }}
                 dayMaxEvents={3}
-                moreLinkContent={(args) => `+${args.num} mais`}
-                moreLinkClick={(args) => {
+                moreLinkContent={(args: any) => `+${args.num} mais`}
+                moreLinkClick={(args: any) => {
                   const day = args.date.toISOString().slice(0, 10);
                   const ids = schedule.filter((s) => s.start.slice(0, 10) === day).map((s) => s.id.toString());
                   const label = args.date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                   setModalDay({ date: label, ids });
                   return 'prevent';
                 }}
-                eventContent={(arg) => {
+                eventContent={(arg: any) => {
                   const grouped = arg.event.extendedProps._grouped;
                   const tipo = arg.event.extendedProps.tipo || '';
                   const color = tipoColor[tipo] || '#2d7ef0';
@@ -331,7 +331,7 @@ export default function AgendaPage() {
                     </div>
                   );
                 }}
-                eventClick={(info) => {
+                eventClick={(info: any) => {
                   if (info.event.extendedProps._grouped) {
                     const ids: string[] = info.event.extendedProps._ids || [];
                     const day = info.event.extendedProps._day || '';

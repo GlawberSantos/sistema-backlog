@@ -1,7 +1,7 @@
 // src/features/producao/ProducaoPage.tsx
 import { useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, type ScheduleEvent } from '../../store/useAppStore';
 import { Badge } from '../../components/ui/Badge';
 import { TypePill } from '../../components/ui/TypePill';
 
@@ -11,11 +11,107 @@ const tipoBar: Record<string, string> = {
   Vistoria: '#f5882a',
 };
 
+function FotosModal({ event, onClose }: { event: ScheduleEvent; onClose: () => void }) {
+  const fotos = event.extendedProps.fotos ?? [];
+  const ep = event.extendedProps;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0,0,0,0.75)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--bg-panel, #0f1829)',
+          border: '1px solid var(--border, #1e2e4a)',
+          borderRadius: 14,
+          maxWidth: 720,
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto',
+          padding: 20,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{event.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+              {ep.cliente} · {ep.tecnico} · <Badge status={ep.status}>{ep.status}</Badge>
+            </div>
+            {ep.concluidoEm && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                Concluída em {new Date(ep.concluidoEm).toLocaleString('pt-BR')}
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+            Fechar
+          </button>
+        </div>
+
+        {fotos.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Nenhuma foto anexada nesta atividade.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10 }}>
+            {fotos.map((src, idx) => (
+              <a
+                key={idx}
+                href={src}
+                target="_blank"
+                rel="noreferrer"
+                style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '1' }}
+                title={`Abrir foto ${idx + 1} em tamanho real`}
+              >
+                <img src={src} alt={`Foto ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </a>
+            ))}
+          </div>
+        )}
+
+        {ep.carimbo && (
+          <details style={{ marginTop: 16 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Ver carimbo / texto do encerramento</summary>
+            <pre
+              style={{
+                marginTop: 8,
+                padding: 12,
+                background: 'var(--bg-input, #0a0f1a)',
+                borderRadius: 8,
+                fontSize: 11,
+                whiteSpace: 'pre-wrap',
+                color: 'var(--text-secondary)',
+                maxHeight: 200,
+                overflow: 'auto',
+              }}
+            >
+              {ep.carimbo}
+            </pre>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ProducaoPage() {
   const { schedule } = useAppStore();
   const [search, setSearch] = useState('');
   const [filterTipo, setFilterTipo] = useState('');
   const [filterTecnico, setFilterTecnico] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [fotosEvent, setFotosEvent] = useState<ScheduleEvent | null>(null);
 
   const today = new Date().toDateString();
 
@@ -29,9 +125,20 @@ export default function ProducaoPage() {
           event.extendedProps.cliente.toLowerCase().includes(search.toLowerCase());
         const matchTipo = !filterTipo || event.extendedProps.tipo === filterTipo;
         const matchTecnico = !filterTecnico || event.extendedProps.tecnico === filterTecnico;
-        return matchSearch && matchTipo && matchTecnico;
+        const matchStatus = !filterStatus || event.extendedProps.status === filterStatus;
+        return matchSearch && matchTipo && matchTecnico && matchStatus;
       });
-  }, [schedule, search, filterTipo, filterTecnico, today]);
+  }, [schedule, search, filterTipo, filterTecnico, filterStatus, today]);
+
+  const stats = useMemo(() => {
+    const base = schedule.filter((e) => new Date(e.start).toDateString() === today);
+    return {
+      total: base.length,
+      agendado: base.filter((e) => e.extendedProps.status === 'Agendado').length,
+      concluida: base.filter((e) => e.extendedProps.status === 'Concluída').length,
+      naoConcluida: base.filter((e) => e.extendedProps.status === 'Não Concluída').length,
+    };
+  }, [schedule, today]);
 
   const tecnicos = useMemo(() => {
     return [...new Set(schedule.map((e) => e.extendedProps.tecnico).filter(Boolean))].sort();
@@ -44,6 +151,10 @@ export default function ProducaoPage() {
       Tipo: ev.extendedProps.tipo,
       Tecnico: ev.extendedProps.tecnico,
       Status: ev.extendedProps.status,
+      Fotos: ev.extendedProps.fotos?.length ?? 0,
+      ConcluidoEm: ev.extendedProps.concluidoEm
+        ? new Date(ev.extendedProps.concluidoEm).toLocaleString('pt-BR')
+        : '',
     }));
     if (!rows.length) return;
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -54,6 +165,8 @@ export default function ProducaoPage() {
 
   return (
     <div style={{ display: 'flex', gap: 14, height: 'calc(100vh - 130px)' }}>
+      {fotosEvent && <FotosModal event={fotosEvent} onClose={() => setFotosEvent(null)} />}
+
       <div className="panel" style={{ width: 220, flexShrink: 0, overflowY: 'auto' }}>
         <div className="panel-header">
           <span className="panel-title">Filtrar por Técnico</span>
@@ -88,6 +201,28 @@ export default function ProducaoPage() {
       </div>
 
       <div className="panel" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', gap: 10, padding: '12px 16px 0', flexWrap: 'wrap' }}>
+          {[
+            { key: '', label: 'Todas', count: stats.total },
+            { key: 'Agendado', label: 'Agendadas', count: stats.agendado },
+            { key: 'Concluída', label: 'Concluídas', count: stats.concluida },
+            { key: 'Não Concluída', label: 'Não concluídas', count: stats.naoConcluida },
+          ].map((s) => (
+            <button
+              key={s.key || 'all'}
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setFilterStatus(s.key)}
+              style={{
+                borderColor: filterStatus === s.key ? 'var(--accent-blue)' : undefined,
+                color: filterStatus === s.key ? 'var(--accent-blue-light)' : undefined,
+              }}
+            >
+              {s.label} ({s.count})
+            </button>
+          ))}
+        </div>
+
         <div className="panel-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', flex: 1, maxWidth: 320, minWidth: 200 }}>
@@ -134,40 +269,64 @@ export default function ProducaoPage() {
           <div className="hide-mobile">Técnico</div>
           <div className="hide-mobile">Status</div>
           <div className="hide-mobile">Tipo</div>
-          <div />
+          <div>Fotos</div>
         </div>
 
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          {atividadesHoje.map((event) => (
-            <div key={event.id} className="activity-row fade-in">
+          {atividadesHoje.map((event) => {
+            const fotosCount = event.extendedProps.fotos?.length ?? 0;
+            const isConcluida = event.extendedProps.status === 'Concluída';
+
+            return (
               <div
-                style={{
-                  width: 4,
-                  height: 36,
-                  borderRadius: 2,
-                  background: tipoBar[event.extendedProps.tipo] || 'var(--accent-blue)',
-                  justifySelf: 'center',
-                }}
-              />
-              <div className="activity-name">
-                <div className="main">{event.title}</div>
-                <div className="sub">{event.extendedProps.cliente}</div>
+                key={event.id}
+                className="activity-row fade-in"
+                style={isConcluida ? { background: 'color-mix(in oklab, var(--accent-green, #0eb88a) 6%, transparent)' } : undefined}
+              >
+                <div
+                  style={{
+                    width: 4,
+                    height: 36,
+                    borderRadius: 2,
+                    background: isConcluida ? '#0eb88a' : tipoBar[event.extendedProps.tipo] || 'var(--accent-blue)',
+                    justifySelf: 'center',
+                  }}
+                />
+                <div className="activity-name">
+                  <div className="main">{event.title}</div>
+                  <div className="sub">{event.extendedProps.cliente}</div>
+                </div>
+                <div className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {event.extendedProps.tecnico}
+                </div>
+                <div className="hide-mobile">
+                  <Badge status={event.extendedProps.status}>{event.extendedProps.status}</Badge>
+                </div>
+                <div className="hide-mobile">
+                  <TypePill tipo={event.extendedProps.tipo} />
+                </div>
+                <div>
+                  {fotosCount > 0 || isConcluida || event.extendedProps.status === 'Não Concluída' ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => setFotosEvent(event)}
+                      title={fotosCount > 0 ? 'Ver fotos do técnico' : 'Ver detalhes do encerramento'}
+                    >
+                      📷 {fotosCount > 0 ? `${fotosCount} foto${fotosCount > 1 ? 's' : ''}` : 'Detalhes'}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>
+                  )}
+                </div>
               </div>
-              <div className="hide-mobile" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {event.extendedProps.tecnico}
-              </div>
-              <div className="hide-mobile">
-                <Badge status={event.extendedProps.status}>{event.extendedProps.status}</Badge>
-              </div>
-              <div className="hide-mobile">
-                <TypePill tipo={event.extendedProps.tipo} />
-              </div>
-              <div />
-            </div>
-          ))}
+            );
+          })}
 
           {atividadesHoje.length === 0 && (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Nenhuma atividade agendada para hoje.</div>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+              Nenhuma atividade para os filtros selecionados hoje.
+            </div>
           )}
         </div>
       </div>

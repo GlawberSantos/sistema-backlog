@@ -75,6 +75,10 @@ export type ScheduleEvent = {
     status: string;
     pon?: string;
     itemID?: string;
+    /** Fotos do encerramento (data URLs) */
+    fotos?: string[];
+    carimbo?: string;
+    concluidoEm?: string;
   };
 };
 
@@ -83,12 +87,10 @@ type AppState = {
   users: User[];
   schedule: ScheduleEvent[];
   currentUser: User | null;
-  activeView: string;
   loading: boolean;
 
   loadAll: () => Promise<void>;
   setCurrentUser: (user: User | null) => void;
-  setActiveView: (view: string) => void;
 
   updateBacklogItem: (id: string, updates: Partial<BacklogItem>) => Promise<void>;
   importData: (newData: BacklogItem[], onProgress?: (done: number, total: number) => void) => Promise<void>;
@@ -107,7 +109,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   users: [],
   schedule: [],
   currentUser: null,
-  activeView: 'dashboard',
   loading: false,
 
   loadAll: async () => {
@@ -129,7 +130,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setCurrentUser: (user) => set({ currentUser: user }),
-  setActiveView: (view) => set({ activeView: view }),
 
   updateBacklogItem: async (ID, updates) => {
     const item = get().data.find(d => d.ID === ID);
@@ -172,7 +172,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateScheduleEvent: async (id, updates) => {
-    const response = await api.patch(`/schedule/${id}`, updates);
+    const current = get().schedule.find(e => e.id === id);
+    if (!current) return;
+    const payload: ScheduleEvent = {
+      ...current,
+      ...updates,
+      extendedProps: {
+        ...current.extendedProps,
+        ...(updates.extendedProps ?? {}),
+      },
+    };
+    const response = await api.patch(`/schedule/${id}`, payload);
     const updated = response.data as ScheduleEvent;
     set(s => ({ schedule: s.schedule.map(e => e.id === id ? { ...e, ...updated } : e) }));
   },

@@ -1,7 +1,5 @@
 // src/features/login/LoginPage.tsx
-// Login simplificado: apenas e-mail + senha.
-// O TOTP foi desativado pois crypto.subtle não funciona em HTTP (celular via IP local).
-// Para reativar: descomentar o step 'totp' e a lógica de verificação.
+// Login por e-mail e senha.
 
 import { useState } from 'react';
 import { useAppStore, User } from '../../store/useAppStore';
