@@ -20,7 +20,7 @@
 - **Estilização:** Tailwind CSS
 - **Estado:** Zustand
 - **UI:** FullCalendar, Chart.js, jsPDF
-- **Persistência:** localStorage (pronto para backend)
+- **Persistência:** localStorage
 
 ## 🎯 Demonstração
 
@@ -28,7 +28,7 @@
 
 ## 📸 Screenshots
 
-*(Você pode adicionar imagens aqui depois)*
+*(Mais imagens podem ser adicionadas aqui depois)*
 
 ## Como rodar localmente
 
@@ -44,3 +44,35 @@ npm install
 
 # Rode o projeto
 npm run dev
+Acesse: http://localhost:5173
+Credenciais de teste
+Perfil,E-mail,Senha
+Administrador,admin@smra.com,admin123
+Supervisor,supervisor@smra.com,sup123
+Técnico,tecnico@smra.com,tec123
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+PerfilE-mailSenhaAdministradoradmin@smra.comadmin123Supervisorsupervisor@smra.comsup123Técnicotecnico@smra.comtec123
