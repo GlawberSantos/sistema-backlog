@@ -1,7 +1,6 @@
 # SMRA — Sistema de Monitoramento de Rede e Ativações
 
-![Preview](https://via.placeholder.com/800x400/0A66C2/FFFFFF?text=Preview+do+SMRA)  
-*(Substitua depois por uma screenshot real do projeto)*
+![Preview do SMRA](https://i.imgur.com/A90lrpB.png)
 
 **Aplicação web completa** para gestão de backlog, agenda técnica e produção diária de equipes de telecomunicações.
 
